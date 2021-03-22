@@ -5,26 +5,12 @@
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 typedef struct {
-  char names[256];
+  char names[10];
   int value;
   
 } person;
 
 
-
-char* toChar(String str){
-  char s[40];
-  str.toCharArray(s,40);
-  char* text=(char*) malloc(strlen(s)*sizeof(char));
-
-  for(int i=0;i<strlen(s);i++){
-    text[i]=s[i];
-  }
-
-  return text;
-
- 
-}
 
 
 
@@ -42,6 +28,7 @@ person* hash_table[10];// creates 10 pointers for an instance of a person struct
 unsigned int hash(char* nameChar){ //parameter is a pointer to a char/ this function creates an index number
 
   int len =strlen(nameChar);
+
   unsigned int hash_value =0;
   
   for (int i=0;i<len;i++){
@@ -77,6 +64,7 @@ bool hashTableInsert(person* p){ //expecting the address of a person variable
 
   int index = hash (p->names); //uses the address to get the struct value
   
+  
   if (hash_table[index] != NULL){//checks if hash_table is holding an adress
     return false;
   }
@@ -85,8 +73,38 @@ bool hashTableInsert(person* p){ //expecting the address of a person variable
   return true;
 }
 
-//person* hashLookUp (char* names
+person* hashLookUp (char* names){
+  int index = hash(names);
+ 
+  if (hash_table[index] !=NULL && strcmp(hash_table[index]->names, names)==0){
+    return hash_table[index];
+  }else{
+    return NULL;
+  }
+}
 
+
+
+char* toChar(String str){
+  char s[10];
+  str.trim();
+  str.toCharArray(s,10);
+  char* text=(char*) malloc(strlen(s)*sizeof(char));
+  
+  for(int i=0;i<strlen(s);i++){
+
+
+    *text=s[i];//*text means the head of the value at the address and so will be the first letter in the address 
+    text++;//increments the address number so the new head is the next letter
+  }
+  
+  text-=strlen(s);//minuses the length from the address to return to the original head.
+  
+
+  return text;
+
+ 
+}
 
 
 void setup() {
@@ -103,6 +121,17 @@ void setup() {
   hashTableInsert(&kate);
   hashTableInsert(&mpho);
   table();
+
+  char* t=toChar("Jacob");
+  person* h = hashLookUp(t);
+  free(t);
+
+  
+  if (h==NULL){
+    Serial.println("No");
+  }else{
+    Serial.println(h->names);
+  }
  
 
 
