@@ -88,8 +88,8 @@ person* hashLookUp (char* names){
 char* toChar(String str){
   char s[20];
   str.trim();
-  str.toCharArray(s,10);
-  char* text=(char*) malloc(strlen(s)*sizeof(char));
+  str.toCharArray(s,20);
+  char* text=NULL;//should be malloc
 
   
   for(int i=0;i<strlen(s);i++){
@@ -104,12 +104,14 @@ char* toChar(String str){
   
   text-=strlen(s);//minuses the length from the address to return to the original head.
 
+  
+
   return text;
 
  
 }
 
-
+ 
 void setup() {
 
   Serial.begin(9600);
