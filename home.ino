@@ -5,7 +5,7 @@
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 typedef struct {
-  char names[10];
+  char names[20];
   int value;
   
 } person;
@@ -86,20 +86,23 @@ person* hashLookUp (char* names){
 
 
 char* toChar(String str){
-  char s[10];
+  char s[20];
   str.trim();
   str.toCharArray(s,10);
   char* text=(char*) malloc(strlen(s)*sizeof(char));
+
   
   for(int i=0;i<strlen(s);i++){
-
+  
 
     *text=s[i];//*text means the head of the value at the address and so will be the first letter in the address 
     text++;//increments the address number so the new head is the next letter
   }
+
+  
+  
   
   text-=strlen(s);//minuses the length from the address to return to the original head.
-  
 
   return text;
 
@@ -122,7 +125,7 @@ void setup() {
   hashTableInsert(&mpho);
   table();
 
-  char* t=toChar("Jacob");
+  char* t=toChar("Mpho");
   person* h = hashLookUp(t);
   free(t);
 
