@@ -17,8 +17,8 @@ char qualifier[6]="";
 char action[4]="";
 char  val[3]="";
 int written=EEPROM.read(0);// reads the first value in the eeprom 
-
-
+char* house[10]={floors,first,ground,outside,type,names,qualifier,action,val};
+typedef enum state_e {f=0,fl,g,o,t,n,q,a,v} state_t;
 
 
 void writeEE(){//function to write house description into eeprom
@@ -74,7 +74,7 @@ void scrollSettings(char* setting,int option,int num_setting){
 
       switch (num_setting){
 
-        case 1://Floors
+        case 0://Floors
       
           if (setting[option]=='F'){
             lcd.print("First Floor");
@@ -89,7 +89,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           break;
 
 
-        case 2://first floor
+        case 1://first floor
       
           if (setting[option]=='1'){
             lcd.print("1st Bedroom");
@@ -106,7 +106,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 3://grounf floor
+        case 2://grounf floor
       
           if (setting[option]=='K'){
             lcd.print("Kitchen");
@@ -126,7 +126,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 4://outside
+        case 3://outside
       
           if (setting[option]=='G'){
             lcd.print("Garage");
@@ -137,7 +137,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 5://Type
+        case 4://Type
       
           if (setting[option]=='L'){
             lcd.print("Light");
@@ -145,29 +145,95 @@ void scrollSettings(char* setting,int option,int num_setting){
           }else if (setting[option]=='A'){
             lcd.print("Lamp");
             
-          }else if(setting[option]=='B'){
-              lcd.print("Bathroom");        
+          }else if(setting[option]=='H'){
+              lcd.print("Heat");        
             
-          }else if(setting[option]=='P'){
-              lcd.print("Play Room");        
+          }else if(setting[option]=='W'){
+              lcd.print("Water");        
             
           }
           break;
 
-        
+        case 5://names
+      
+          if (setting[option]=='M'){
+            lcd.print("Main");
+            
+          }else if (setting[option]=='C'){
+            lcd.print("Ceiling");
+            
+          }else if(setting[option]=='D'){
+              lcd.print("Desk");        
+            
+          }else if(setting[option]=='B'){
+              lcd.print("Bed");        
+            
+          }else if(setting[option]=='P'){
+              lcd.print("Cupboard");        
+            
+          }else if(setting[option]=='W'){
+              lcd.print("Wall");        
+            
+          }
+          break;
+          
+        case 6://qualifiers
+      
+          if (setting[option]=='1'){
+            lcd.print("One");
+            
+          }else if (setting[option]=='2'){
+            lcd.print("Two");
+            
+          }else if(setting[option]=='3'){
+              lcd.print("Three");        
+            
+          }else if(setting[option]=='L'){
+              lcd.print("Left");        
+            
+          }else if(setting[option]=='R'){
+              lcd.print("Right");        
+            
+          }
+          break;
+
+        case 7://Action
+      
+          if (setting[option]=='1'){
+            lcd.print("On");
+            
+          }else if (setting[option]=='0'){
+            lcd.print("Off");
+            
+          }else if(setting[option]=='L'){
+              lcd.print("Level");        
+            
+          }
+          break;
+
+        case 8://Values
+      
+          if (setting[option]=='T'){
+            lcd.print("Time: ");
+            
+          }else if (setting[option]=='R'){
+            lcd.print("Range: ");
+            
+          }
+          break;
+   
       }
   
   }
 
 
-int selectFloor(char* setting){
+int chooseSettings(char* setting,int num_setting){
     int select=0;
    
-    scrollSettings(setting,select,1);
+    scrollSettings(setting,select,num_setting);
     bool chosen =false;
 
     while(!chosen){
-
   
       static int old_buttons=lcd.readButtons(); //reads number pressed only runs this code once because it is static and so will remember its value
       int buttons =lcd.readButtons();//reads buttons currently pressed
@@ -176,15 +242,15 @@ int selectFloor(char* setting){
   
     
       if (changes){
-        if(old_buttons&BUTTON_RIGHT&&select<2){
+        if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){
           lcd.clear();
           select+=1;
-          scrollSettings(setting,select,1);
+          scrollSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_LEFT&&select>0){
           lcd.clear();
           select-=1;
-          scrollSettings(setting,select,1);
+          scrollSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_SELECT){
 
@@ -206,7 +272,7 @@ void setup() {
   Serial.begin(9600);
   lcd.begin(16,2);
 
-  char* house[HOUSE_LEN]={floors,first,ground,outside,type,names,qualifier,action,val};
+
   if (written ==0){
     writeEE();
 
@@ -228,16 +294,13 @@ void setup() {
   }
   #endif
   
-
-  
-
-  
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  state_t setting=g;
 
-  selectFloor(floors);
+  chooseSettings(house[g],g);
   lcd.clear();
   delay(10000);
 
