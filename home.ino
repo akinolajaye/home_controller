@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <utility/Adafruit_MCP23017.h>
@@ -7,34 +8,34 @@
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=10;
-char floors[4]="";
-char first[5]="";
-char ground[6]="";
-char outside[3]="";
-char type[5]="";
-char names[7]="";
-char qualifier[6]="";
-char action[4]="";
-char  val[3]="";
+char f[4]="";
+char fl[5]="";
+char g[6]="";
+char o[3]="";
+char t[5]="";
+char n[7]="";
+char q[6]="";
+char a[4]="";
+char v[3]="";
 int written=EEPROM.read(0);// reads the first value in the eeprom 
-char* house[10]={floors,first,ground,outside,type,names,qualifier,action,val};
-typedef enum state_e {f=0,fl,g,o,t,n,q,a,v} state_t;
+char* house[10]={f,fl,g,o,t,n,q,a,v};
+typedef enum state_e {floors=0,first,ground,outside,type,names,qualifiers,actions,values} state_t;
 
 
 void writeEE(){//function to write house description into eeprom
-  char floors[5]={'F','G','O','-'};
-  char first[6]={'1','2','B','P','-'};
-  char ground[7]={'K','H','L','3','4','-'};
-  char outside[4]={'G','R','-'};
-  char type[6]={'L','A','H','W','-'};
-  char names[8]={'M','C','D','B','P','W','-'};
-  char qualifier[7]={'1','2','3','L','R','-'};
-  char action[5]={'1','0','L','-'};
-  char  val[4]={'T','R','x'};
-  char* house[HOUSE_LEN]={floors,first,ground,outside,type,names,qualifier,action,val};//stores pointers to the different char arrays
+  char f[5]={'F','G','O','-'};
+  char fl[6]={'1','2','B','P','-'};
+  char g[7]={'K','H','L','3','4','-'};
+  char o[4]={'G','R','-'};
+  char t[6]={'L','A','H','W','-'};
+  char n[8]={'M','C','D','B','P','W','-'};
+  char q[7]={'1','2','3','L','R','-'};
+  char a[5]={'1','0','L','-'};
+  char  v[4]={'T','R','x'};
+  char* house[HOUSE_LEN]={f,fl,g,o,t,n,q,a,v};//stores pointers to the different char arrays
   int totalLen=0;
 
-  EEPROM.write(totalLen,1); //writes a 1 at the first memory location to signify data has been written to
+  EEPROM.write(totalLen,1); //writes a 1 at the fl memory location to signify data has been written to
   for(int i=0;i<HOUSE_LEN-1;i++){
     for(int j=0;j<strlen(house[i]);j++){
       totalLen++;
@@ -70,7 +71,9 @@ void readEE(char** house){//reads the house desc from the eeprom
 }
 
 
-void scrollSettings(char* setting,int option,int num_setting){
+void navSettings(char* setting,int option,int num_setting){
+
+      lcd.clear();
 
       switch (num_setting){
 
@@ -89,7 +92,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           break;
 
 
-        case 1://first floor
+        case 1://fl floor
       
           if (setting[option]=='1'){
             lcd.print("1st Bedroom");
@@ -126,7 +129,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 3://outside
+        case 3://o
       
           if (setting[option]=='G'){
             lcd.print("Garage");
@@ -154,7 +157,7 @@ void scrollSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 5://names
+        case 5://n
       
           if (setting[option]=='M'){
             lcd.print("Main");
@@ -229,8 +232,10 @@ void scrollSettings(char* setting,int option,int num_setting){
 
 int chooseSettings(char* setting,int num_setting){
     int select=0;
+
+    Serial.println(setting);
    
-    scrollSettings(setting,select,num_setting);
+    navSettings(setting,select,num_setting);
     bool chosen =false;
 
     while(!chosen){
@@ -242,20 +247,24 @@ int chooseSettings(char* setting,int num_setting){
   
     
       if (changes){
-        if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){
+        if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){//once select is greater than the length the index will not be in range
           lcd.clear();
           select+=1;
-          scrollSettings(setting,select,num_setting);
+          navSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_LEFT&&select>0){
           lcd.clear();
           select-=1;
-          scrollSettings(setting,select,num_setting);
+          navSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_SELECT){
 
+          chosen=true;//ends the loop once on is selected
+          
+        }else if(old_buttons&BUTTON_DOWN){
           chosen=true;
-        }  
+          select=50;
+        }
         
     }
   
@@ -298,10 +307,56 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  state_t setting=g;
 
-  chooseSettings(house[g],g);
-  lcd.clear();
-  delay(10000);
+
+  static state_t state=floors;
+
+  int choice;
+
+  switch (state){
+
+    case floors:
+
+      choice=chooseSettings(f,floors);
+      Serial.println(choice);
+
+      switch (choice){
+
+        case 0:
+
+          state= first;
+          break;
+
+        case 1:
+
+          state= ground;
+          break;
+
+        case 2:
+
+          state= outside;
+          break;
+      }
+      break;
+
+    case first:
+
+      chooseSettings(fl,first);
+      break;
+
+    case ground:
+
+      chooseSettings(g,ground);
+      break;
+
+    case outside:
+
+      chooseSettings(o,outside);
+      break;
+
+      
+  }
+
+
 
 }
