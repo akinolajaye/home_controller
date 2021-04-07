@@ -4,7 +4,7 @@
 #include <utility/Adafruit_MCP23017.h>
 #include <EEPROM.h>
 #include <avr/eeprom.h>
-#define DEBUG
+#define DEB
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=10;
@@ -389,7 +389,63 @@ void loop() {
         choice=chooseSettings(t,type);
         if (choice==50){
           state=back;
+        }else{
+          state=names;
         }
+        break;
+
+
+
+      case names:
+
+        choice = chooseSettings(n,names);
+        
+        if (choice==50){
+          state=type;
+        }else{
+          state=qualifiers;
+        }
+        break;
+
+
+      case qualifiers:
+        choice=chooseSettings(q,qualifiers);
+
+        if (choice==50){
+
+          state=names;
+        }
+
+        break;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+
         
    
   }
