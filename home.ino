@@ -157,7 +157,7 @@ void navSettings(char* setting,int option,int num_setting){
           }
           break;
 
-        case 5://n
+        case 5://names
       
           if (setting[option]=='M'){
             lcd.print("Main");
@@ -230,10 +230,8 @@ void navSettings(char* setting,int option,int num_setting){
   }
 
 
-int chooseSettings(char* setting,int num_setting){
-    int select=0;
-
-    Serial.println(setting);
+int chooseSettings(char* setting,int num_setting){//num setting is the number based on the enum which is used to specify what case will be called
+    int select=0;//select is a number that is used to call the index of a house descriptor in order to print out its value and return a number that can be used for cases
    
     navSettings(setting,select,num_setting);
     bool chosen =false;
@@ -262,8 +260,10 @@ int chooseSettings(char* setting,int num_setting){
           chosen=true;//ends the loop once on is selected
           
         }else if(old_buttons&BUTTON_DOWN){
+          
+          select=50;//chosen a random number to represent the case for going back
           chosen=true;
-          select=50;
+          
         }
         
     }
@@ -280,6 +280,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   lcd.begin(16,2);
+ 
 
 
   if (written ==0){
@@ -310,52 +311,90 @@ void loop() {
 
 
   static state_t state=floors;
+  static state_t back;
 
-  int choice;
+  static int choice;
 
   switch (state){
 
-    case floors:
+      case floors:
+  
+        choice=chooseSettings(f,floors); //could have used house[floors] instead of f
+        
+        
+  
+        switch (choice){
+  
+          case 0:
+  
+            state= first;
+            break;
+  
+          case 1:
+  
+            state= ground;
+            break;
+  
+          case 2:
+  
+            state= outside;
+            break;
+  
+        }
+        break;
 
-      choice=chooseSettings(f,floors);
-      Serial.println(choice);
+        
+  
+      case first:
+  
+        choice=chooseSettings(fl,first);
+        
+        if (choice==50){
+          state=floors;// goes back to thee previous state
+        }else{
+          state=type;
+          back=first;
+        }
+        break;
 
-      switch (choice){
+        
+  
+      case ground:
+        choice=chooseSettings(g,ground);
+        
+        if (choice==50){
+          state=floors;// goes back to thee previous state
+        }else{
+          state=type;
+          back=ground;//stores sthe previous state so that when using buttons to go back the system remembers the menu last selected
+        }
+        break;
 
-        case 0:
+        
+  
+      case outside:
+        choice=chooseSettings(o,outside);
+        
+        if (choice==50){
+          state=floors;// goes back to thee previous state
+        }else{
+          state=type;
+          back=outside;
+        }
+        break;
 
-          state= first;
-          break;
 
-        case 1:
+      case type:
 
-          state= ground;
-          break;
-
-        case 2:
-
-          state= outside;
-          break;
-      }
-      break;
-
-    case first:
-
-      chooseSettings(fl,first);
-      break;
-
-    case ground:
-
-      chooseSettings(g,ground);
-      break;
-
-    case outside:
-
-      chooseSettings(o,outside);
-      break;
-
-      
+        choice=chooseSettings(t,type);
+        if (choice==50){
+          state=back;
+        }
+        
+   
   }
+
+  
 
 
 
