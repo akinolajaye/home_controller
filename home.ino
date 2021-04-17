@@ -301,6 +301,7 @@ void loop() {
 
   static state_t state=floors;
   static state_t backToFloor,backToType,backToName,backToAction;
+  static char actionChoice;
 
 
   switch (state){
@@ -484,6 +485,8 @@ void loop() {
           sum=(modProduct+(typeChoice+1)+(nameChoice+1)+choice) % (modValue*(typeChoice+1)+1);
 
           address+=sum;//final unique address
+
+          actionChoice=actionSetting[choice];
           state=values;
           backToAction=actions;
 
@@ -503,13 +506,41 @@ void loop() {
     case values:
        
         int value =(int) EEPROM.read(address);
-        Serial.println(value);
-        if(value>100){
-          //EEPROM.update(address,0);
-          value=0;
+
+        
+        if (actionChoice=='L'){
+
+          if(value>100){
+            EEPROM.update(address,0);
+            value=0;
+          }
+
+          lcd.clear();
+          lcd.print(value);
+          
+        }else{
+
+          if(value>23){
+            EEPROM.update(address,0);
+            value=0;
+          }
+          
+          lcd.clear();
+
+          if (value<10){
+
+            lcd.print("0");
+          }
+          
+          lcd.print(value);
+          lcd.print(":00");
+          
         }
-        lcd.clear();
-        lcd.print(value);
+
+
+
+        
+
 
 
         bool chosen =false;
@@ -523,41 +554,100 @@ void loop() {
           int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
 
           
-        
-          if (changes){
-            if(old_buttons&BUTTON_RIGHT&&value<100){//once select is greater than the length the index will not be in range
-              value+=10;
-              lcd.clear();
-              
-              lcd.print(value);
-              
-              
-              
-            }else if(old_buttons&BUTTON_LEFT&&value>0){
-              value-=10;
-              lcd.clear();
-              lcd.print(value);
-              
-              
-              
-            }else if(old_buttons&BUTTON_SELECT){
-
-              //EEPROM.update(address,value);
-    
-              chosen=true;//ends the loop once on is selected
-              state=backToAction;
-              
-            }else if(old_buttons&BUTTON_DOWN){
-              
-
-              chosen=true;
-              state=backToAction;
-              
-            }
-            
-        }
+          if (actionChoice=='L'){
+              if (changes){
+                  if(old_buttons&BUTTON_RIGHT&&value<100){//once select is greater than the length the index will not be in range
+                    value+=10;
+                    lcd.clear();
+                    
+                    lcd.print(value);
+                    
+                    
+                    
+                  }else if(old_buttons&BUTTON_LEFT&&value>0){
+                    value-=10;
+                    lcd.clear();
+                    lcd.print(value);
+                    
+                    
+                    
+                  }else if(old_buttons&BUTTON_SELECT){
       
+                    EEPROM.update(address,value);
+          
+                    chosen=true;//ends the loop once on is selected
+                    state=backToAction;
+                    
+                  }else if(old_buttons&BUTTON_DOWN){
+                    
+      
+                    chosen=true;
+                    state=backToAction;
+                    
+                  }
+                  
+              }
+               
+          }else{
+
+              if (changes){
+                  if(old_buttons&BUTTON_RIGHT&&value<23){//once select is greater than the length the index will not be in range
+                    value+=1;
+                    lcd.clear();
+
+                    if (value<10){
+
+                      lcd.print("0");
+                    }
+                    
+                    lcd.print(value);
+                    lcd.print(":00");
+                    
+                    
+                    
+                  }else if(old_buttons&BUTTON_LEFT&&value>0){
+                    value-=1;
+                    lcd.clear();
+                    
+                    if (value<10){
+
+                      lcd.print("0");
+                    }
+                    
+                    lcd.print(value);
+                    lcd.print(":00");
+                    
+                    
+                    
+                  }else if(old_buttons&BUTTON_SELECT){
+                    
+      
+                    EEPROM.update(address,value);
+          
+                    chosen=true;//ends the loop once on is selected
+                    state=backToAction;
+                    
+                  }else if(old_buttons&BUTTON_DOWN){
+                    
+      
+                    chosen=true;
+                    state=backToAction;
+                    
+                  }
+                  
+              }
+
+
+
+            
+          }
+  
           old_buttons=buttons;
+
+
+
+
+        
       }
 
      
