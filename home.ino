@@ -4,10 +4,10 @@
 #include <utility/Adafruit_MCP23017.h>
 #include <EEPROM.h>
 #include <avr/eeprom.h>
-#define DEBU
+#define DEBUG
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
-int HOUSE_LEN=8;
+int HOUSE_LEN=9;
 char floorRoom[4]="";
 char firstFlrRoom[4]="";
 char groundRoom[4]="";
@@ -15,9 +15,10 @@ char outsideRoom[3]="";
 char typeSetting[4]="";
 char gardenSetting[5]="";
 char deviceName[2]="";
+char actionSetting[4]="";
 int written=EEPROM.read(0);// reads the first value in the eeprom 
-char* house[8]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName};
-typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names} state_t;
+char* house[9]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};
+typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions} state_t;
 
 //int sumIterations(char*,char*);
 void writeEE(){//function to write house description into eeprom
@@ -27,8 +28,9 @@ void writeEE(){//function to write house description into eeprom
   char outsideRoom[4]={'G','R','-'};
   char typeSetting[5]={'L','A','H','-'};
   char gardenSetting[6]={'L','A','H','W','-'};
-  char deviceName[3]={'M','x'};
-  char* house[HOUSE_LEN]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName};//stores pointers to the different char arrays
+  char deviceName[3]={'M','-'};
+  char actionSetting[5]={'1','0','L','x'};
+  char* house[HOUSE_LEN]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};//stores pointers to the different char arrays
   int totalLen=0;
 
   EEPROM.update(totalLen,1); //writes a 1 at the firstFlrRoom memory location to signify data has been written to
@@ -51,9 +53,9 @@ void readEE(char** house){//reads the house desc from the eeprom
     for(int i=0;i<HOUSE_LEN-1;i++){//loop based on the amount of different house descriptors
       int j=0;
 
-      while((char) EEPROM.read(count)!='-'){//keep looping until it sees valueSetting '-' which signifies that it should move to the next descriptor
+      while((char) EEPROM.read(count)!='-'){//keep looping until it sees actionSetting '-' which signifies that it should move to the next descriptor
         
-        if((char) EEPROM.read(count)=='x'){break;}//breaks when it sees valueSetting 'x' which signifies the end of all the data being reae
+        if((char) EEPROM.read(count)=='x'){break;}//breaks when it sees actionSetting 'x' which signifies the end of all the data being reae
    
         house[i][j]=(char) EEPROM.read(count);
         j++;
@@ -68,6 +70,7 @@ void readEE(char** house){//reads the house desc from the eeprom
 
 
 void navSettings(char* setting,int option,int num_setting){
+
 
       lcd.clear();
 
@@ -169,13 +172,30 @@ void navSettings(char* setting,int option,int num_setting){
           }
           break;
 
+        case 7: //Action
+
+          if (setting[option]=='1'){
+            lcd.print("On Time");
+            
+          }else if (setting[option]=='0'){
+            lcd.print("0ff Time");
+            
+          }else if(setting[option]=='L'){
+              lcd.print("Level");        
+            
+          }
+          break;
+          
+
+  
+
       }
   
   }
 
 
 int chooseSettings(char* setting,int num_setting){//num setting is the number based on the enum which is used to specify what case will be called
-    int select=0;//select is valueSetting number that is used to call the index of valueSetting house descriptor in order to print out its value and return valueSetting number that can be used for cases
+    int select=0;//select is actionSetting number that is used to call the index of actionSetting house descriptor in order to print out its value and return actionSetting number that can be used for cases
    
     navSettings(setting,select,num_setting);
     bool chosen =false;
@@ -205,7 +225,7 @@ int chooseSettings(char* setting,int num_setting){//num setting is the number ba
           
         }else if(old_buttons&BUTTON_DOWN){
           
-          select=50;//chosen valueSetting random number to represent the case for going back
+          select=50;//chosen actionSetting random number to represent the case for going back
           chosen=true;
           
         }
@@ -218,7 +238,7 @@ int chooseSettings(char* setting,int num_setting){//num setting is the number ba
   return select;
 }
 
-int sumIterations(char* firstIter,char* nestedIter){
+int sumIterations(char* firstIter,char* nestedIter,char* secondNestedIter){//function to generate a value based on the addition of index actions in a loop
 
   int sumTotal=0;
 
@@ -226,8 +246,10 @@ int sumIterations(char* firstIter,char* nestedIter){
 
     for(int j=1;j<=strlen(nestedIter);j++){
 
-      sumTotal+=i+j+1;
-      
+      for(int k=1;k<=strlen(secondNestedIter);k++){
+        sumTotal+=i+j+k;
+      }
+        
     }
     
   }
@@ -240,16 +262,8 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   lcd.begin(16,2);
-  /*
-  char x[10] ="";
-  String z="feejjt";
-  String outsideRoom ="hii";
-  z.toCharArray(x,10);
-  outsideRoom.toCharArray(x,10);
-  
-  
-  Serial.println(x);
-  */
+ 
+
 
   if (written ==0){
     writeEE();
@@ -281,22 +295,24 @@ void loop() {
 
 
     
-  static int add,sumTotal,choice,modChoice,modValue,modProduct,sum,startingAddress;
+  static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice;
+
+  //address will be a unique value that is generated as a memory address for each setting chosen
 
   static state_t state=floors;
-  static state_t back,secondBack;
+  static state_t backToFloor,backToType,backToName;
 
 
   switch (state){
 
       case floors:
-        add=0;
+        address=0;
           
   
         choice=chooseSettings(floorRoom,floors); //could have used house[floors] instead of floorRoom
 
-        add=(choice+1)*200;
-        startingAddress=add;
+        address=(choice+1)*200;
+        startingAddress=address;//stores the address so that when going back in the menu it will remember the adress before the value was changed
         
         
   
@@ -326,35 +342,35 @@ void loop() {
         
   
       case first:
-        add=startingAddress;
+        address=startingAddress;
   
         choice=chooseSettings(firstFlrRoom,first);
 
-        add+=choice*50;
+        address+=choice*50;
 
         
         if (choice==50){
           state=floors;// goes back to thee previous state
         }else{
           state=type;
-          back=first;
+          backToFloor=first;
         }
         break;
 
         
   
       case ground:
-        add=startingAddress;
+        address=startingAddress;
         
         choice=chooseSettings(groundRoom,ground);
 
-        add+=choice*50;
+        address+=choice*50;
         
         if (choice==50){
           state=floors;// goes back to thee previous state
         }else{
           state=type;
-          back=ground;//stores sthe previous state so that when using buttons to go back the system remembers the menu last selected
+          backToFloor=ground;//stores sthe previous state so that when using buttons to go back the system remembers the menu last selected
         }
         break;
 
@@ -362,9 +378,9 @@ void loop() {
   
       case outside:
 
-        add=startingAddress;
+        address=startingAddress;
         choice=chooseSettings(outsideRoom,outside);
-        add+=choice*50;
+        address+=choice*50;
         
         if (choice==50){
           state=floors;// goes back to thee previous state
@@ -377,7 +393,7 @@ void loop() {
             state=type;
           }
           
-          back=outside;
+          backToFloor=outside;
         }
         break;
 
@@ -388,29 +404,33 @@ void loop() {
 
         
 
+        addressAtType=address;
+
         choice=chooseSettings(typeSetting,type);
-        modChoice=choice;//saves choice for mod
-        sumTotal=sumIterations(typeSetting,deviceName);
+        typeChoice=choice;//saves the choice which will be used in the address generation using mod
+        sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
 
         if (choice==50){
-          state=back;
+          state=backToFloor;
         }else{
           state=names;
-          secondBack=type;
+          backToType=type;
         }
         break;
 
       case gardenType:
 
+        addressAtType=address;
+
         choice=chooseSettings(gardenSetting,gardenType);
-        modChoice=choice;//saves choice for mod
-        sumTotal=sumIterations(gardenSetting,deviceName);
+        typeChoice=choice;//saves choice for mod
+        sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
         
         if (choice==50){
-          state=back;
+          state=backToFloor;
         }else{
           state=names;
-          secondBack=gardenType;
+          backToType=gardenType;
         }
         break;
 
@@ -418,26 +438,61 @@ void loop() {
 
       case names:
 
-        choice = chooseSettings(deviceName,names);
-
-
-
         
+        
+
+        choice = chooseSettings(deviceName,names);
+        nameChoice=choice;
+
         if (choice==50){
-          state=secondBack;
-          add-=sum;
+          state=backToType;
+          
         }else{
 
+          state = actions;
+          backToName=names;
+
         
 
+
+          
+          
+        }
+
+        
+        break;
+
+      case actions:
+
+        address=addressAtType;
+      
+        int sum=0;
+      
+        choice=chooseSettings(actionSetting,actions);
+
+
+
+        if (choice==50){
+          state=backToName;
+        }else{
+
+          /*unique address generation*/
           modValue=sumTotal/strlen(typeSetting);
-          modProduct=(modChoice*modValue);
 
-          sum=(modProduct+(modChoice+1)+(choice+1)+1) % (modValue*(modChoice+1)+1);
+          modProduct=(typeChoice*modValue);
 
-          add+=sum;
-          Serial.println(add);
-          delay(100);
+          sum=(modProduct+(typeChoice+1)+(nameChoice+1)+choice) % (modValue*(typeChoice+1)+1);
+
+          address+=sum;//final unique address
+
+          
+
+          #ifdef DEBUG
+          Serial.println(address);
+          #endif
+          delay(10);
+          
+     
         }
         break;
       
