@@ -18,7 +18,7 @@ char deviceName[2]="";
 char actionSetting[4]="";
 int written=EEPROM.read(0);// reads the first value in the eeprom 
 char* house[9]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};
-typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions} state_t;
+typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values} state_t;
 
 //int sumIterations(char*,char*);
 void writeEE(){//function to write house description into eeprom
@@ -295,12 +295,12 @@ void loop() {
 
 
     
-  static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice;
+  static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum;
 
   //address will be a unique value that is generated as a memory address for each setting chosen
 
   static state_t state=floors;
-  static state_t backToFloor,backToType,backToName;
+  static state_t backToFloor,backToType,backToName,backToAction;
 
 
   switch (state){
@@ -466,7 +466,7 @@ void loop() {
 
         address=addressAtType;
       
-        int sum=0;
+         sum=0;
       
         choice=chooseSettings(actionSetting,actions);
 
@@ -484,6 +484,8 @@ void loop() {
           sum=(modProduct+(typeChoice+1)+(nameChoice+1)+choice) % (modValue*(typeChoice+1)+1);
 
           address+=sum;//final unique address
+          state=values;
+          backToAction=actions;
 
           
 
@@ -495,6 +497,74 @@ void loop() {
      
         }
         break;
+
+
+
+    case values:
+       
+        int value =(int) EEPROM.read(address);
+        Serial.println(value);
+        if(value>100){
+          //EEPROM.update(address,0);
+          value=0;
+        }
+        lcd.clear();
+        lcd.print(value);
+
+
+        bool chosen =false;
+
+    
+        while(!chosen){
+      
+          static int old_buttons=lcd.readButtons(); //reads number pressed only runs this code once because it is static and so will remember its value
+          int buttons =lcd.readButtons();//reads buttons currently pressed
+          
+          int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
+
+          
+        
+          if (changes){
+            if(old_buttons&BUTTON_RIGHT&&value<100){//once select is greater than the length the index will not be in range
+              value+=10;
+              lcd.clear();
+              
+              lcd.print(value);
+              
+              
+              
+            }else if(old_buttons&BUTTON_LEFT&&value>0){
+              value-=10;
+              lcd.clear();
+              lcd.print(value);
+              
+              
+              
+            }else if(old_buttons&BUTTON_SELECT){
+
+              //EEPROM.update(address,value);
+    
+              chosen=true;//ends the loop once on is selected
+              state=backToAction;
+              
+            }else if(old_buttons&BUTTON_DOWN){
+              
+
+              chosen=true;
+              state=backToAction;
+              
+            }
+            
+        }
+      
+          old_buttons=buttons;
+      }
+
+     
+
+  
+      break;
+      
       
    
   }
