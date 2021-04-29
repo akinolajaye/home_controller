@@ -1,4 +1,4 @@
-
+    
 #include <Wire.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <utility/Adafruit_MCP23017.h>
@@ -8,7 +8,7 @@
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=9;
-char floorRoom[4]="";
+char floorRoom[5]="";
 char firstFlrRoom[4]="";
 char groundRoom[4]="";
 char outsideRoom[3]="";
@@ -16,13 +16,21 @@ char typeSetting[4]="";
 char gardenSetting[5]="";
 char deviceName[2]="";
 char actionSetting[4]="";
+char* setting = (char*) malloc(sizeof(char)*5);
+char* room = (char*) malloc(sizeof(char)*5);
 int written=EEPROM.read(0);// reads the first value in the eeprom 
 char* house[9]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};
-typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values} state_t;
+typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values,data} state_t;
+static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum,value,opt,setNum ;
+static bool chosen;
+ 
 
-//int sumIterations(char*,char*);
+  static state_t state=floors;
+  static state_t backToFloor,backToType,backToName,backToAction;
+  static char actionChoice;
+
 void writeEE(){//function to write house description into eeprom
-  char floorRoom[5]={'F','G','O','-'};
+  char floorRoom[6]={'F','G','O','S','-'}; 
   char firstFlrRoom[5]={'1','2','B','-'};
   char groundRoom[5]={'K','H','L','-'};
   char outsideRoom[4]={'G','R','-'};
@@ -69,6 +77,124 @@ void readEE(char** house){//reads the house desc from the eeprom
 }
 
 
+String getMenuItemString(char* setting,int option,int num_setting){
+
+      switch (num_setting){
+
+        case 0://Floors
+      
+          if (setting[option]=='F'){
+            Serial.print(F("First Floor"));
+            
+          }else if (setting[option]=='G'){
+            Serial.print(F("Ground Floor"));
+            
+          }else if(setting[option]=='O'){
+              Serial.print(F("Outside"));        
+            
+          }
+          break;
+
+
+        case 1://firstFlrRoom floor
+      
+          if (setting[option]=='1'){
+            Serial.print(F("1st Bedroom"));
+            
+          }else if (setting[option]=='2'){
+            Serial.print(F("2nd Bedroom"));
+            
+          }else if(setting[option]=='B'){
+              Serial.print(F("Bathroom"));        
+            
+            
+          }
+          break;
+
+        case 2://grounf floor
+      
+          if (setting[option]=='K'){
+            Serial.print(F("Kitchen"));
+            
+          }else if (setting[option]=='H'){
+            Serial.print(F("Hall"));
+            
+          }else if(setting[option]=='L'){
+              Serial.print(F("Living Room"));        
+            
+          }     
+            
+          
+          break;
+
+        case 3://outsideRoom
+      
+          if (setting[option]=='G'){
+            Serial.print(F("Garage"));
+            
+          }else if (setting[option]=='R'){
+            Serial.print(F("Garden"));
+            
+          }
+          break;
+
+        case 4://Type
+      
+          if (setting[option]=='L'){
+            Serial.print(F("Light"));
+            
+          }else if (setting[option]=='A'){
+            Serial.print(F("Lamp"));
+            
+          }else if(setting[option]=='H'){
+              Serial.print(F("Heat"));        
+            
+          }
+          break;
+
+        case 5://gardenType
+      
+          if (setting[option]=='L'){
+            Serial.print(F("Light"));
+            
+          }else if (setting[option]=='A'){
+            Serial.print(F("Lamp"));
+            
+          }else if(setting[option]=='H'){
+              Serial.print(F("Heat"));        
+            
+          }else if(setting[option]=='W'){
+              Serial.print(F("Water"));        
+            
+          }
+          break;
+          
+        case 6://names
+      
+          if (setting[option]=='M'){
+            Serial.print(F("Main"));
+            
+          }
+          break;
+
+        case 7: //Action
+
+          if (setting[option]=='1'){
+            Serial.print(F("On Time"));
+            
+          }else if (setting[option]=='0'){
+            Serial.print(F("0ff Time"));
+            
+          }else if(setting[option]=='L'){
+              Serial.print(F("Level"));        
+            
+          }
+          break;
+
+      }
+  
+  }
+  
 void navSettings(char* setting,int option,int num_setting){
 
 
@@ -79,13 +205,16 @@ void navSettings(char* setting,int option,int num_setting){
         case 0://Floors
       
           if (setting[option]=='F'){
-            lcd.print("First Floor");
+            lcd.print(F("First Floor >"));
             
           }else if (setting[option]=='G'){
-            lcd.print("Ground Floor");
+            lcd.print(F("< Ground Floor >"));
             
           }else if(setting[option]=='O'){
-              lcd.print("Outside");        
+              lcd.print(F("< Outside >"));        
+            
+          }else if(setting[option]=='S'){
+              lcd.print(F("< Show Data"));        
             
           }
           break;
@@ -94,13 +223,13 @@ void navSettings(char* setting,int option,int num_setting){
         case 1://firstFlrRoom floor
       
           if (setting[option]=='1'){
-            lcd.print("1st Bedroom");
+            lcd.print(F("1st Bedroom >"));
             
           }else if (setting[option]=='2'){
-            lcd.print("2nd Bedroom");
+            lcd.print(F("< 2nd Bedroom >"));
             
           }else if(setting[option]=='B'){
-              lcd.print("Bathroom");        
+              lcd.print(F("< Bathroom"));        
             
             
           }
@@ -109,13 +238,13 @@ void navSettings(char* setting,int option,int num_setting){
         case 2://grounf floor
       
           if (setting[option]=='K'){
-            lcd.print("Kitchen");
+            lcd.print(F("Kitchen >"));
             
           }else if (setting[option]=='H'){
-            lcd.print("Hall");
+            lcd.print(F("< Hall >"));
             
           }else if(setting[option]=='L'){
-              lcd.print("Living Room");        
+              lcd.print(F("< Living Room"));        
             
           }     
             
@@ -125,10 +254,10 @@ void navSettings(char* setting,int option,int num_setting){
         case 3://outsideRoom
       
           if (setting[option]=='G'){
-            lcd.print("Garage");
+            lcd.print(F("Garage >"));
             
           }else if (setting[option]=='R'){
-            lcd.print("Garden");
+            lcd.print(F("< Garden"));
             
           }
           break;
@@ -136,13 +265,13 @@ void navSettings(char* setting,int option,int num_setting){
         case 4://Type
       
           if (setting[option]=='L'){
-            lcd.print("Light");
+            lcd.print(F("Light >"));
             
           }else if (setting[option]=='A'){
-            lcd.print("Lamp");
+            lcd.print(F("< Lamp >"));
             
           }else if(setting[option]=='H'){
-              lcd.print("Heat");        
+              lcd.print(F("< Heat"));        
             
           }
           break;
@@ -150,16 +279,16 @@ void navSettings(char* setting,int option,int num_setting){
         case 5://gardenType
       
           if (setting[option]=='L'){
-            lcd.print("Light");
+            lcd.print(F("Light >"));
             
           }else if (setting[option]=='A'){
-            lcd.print("Lamp");
+            lcd.print(F("< Lamp >"));
             
           }else if(setting[option]=='H'){
-              lcd.print("Heat");        
+              lcd.print(F("< Heat >"));        
             
           }else if(setting[option]=='W'){
-              lcd.print("Water");        
+              lcd.print(F("< Water"));        
             
           }
           break;
@@ -167,7 +296,7 @@ void navSettings(char* setting,int option,int num_setting){
         case 6://names
       
           if (setting[option]=='M'){
-            lcd.print("Main");
+            lcd.print(F("Main"));
             
           }
           break;
@@ -175,13 +304,13 @@ void navSettings(char* setting,int option,int num_setting){
         case 7: //Action
 
           if (setting[option]=='1'){
-            lcd.print("On Time");
+            lcd.print(F("On Time >"));
             
           }else if (setting[option]=='0'){
-            lcd.print("0ff Time");
+            lcd.print(F("< 0ff Time >"));
             
           }else if(setting[option]=='L'){
-              lcd.print("Level");        
+              lcd.print(F("< Level"));        
             
           }
           break;
@@ -206,6 +335,7 @@ int chooseSettings(char* setting,int num_setting){//num setting is the number ba
       int buttons =lcd.readButtons();//reads buttons currently pressed
       
       int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
+      
   
     
       if (changes){
@@ -255,7 +385,22 @@ int sumIterations(char* firstIter,char* nestedIter,char* secondNestedIter){//fun
   }
 
   return sumTotal;
-  
+
+}
+
+
+
+int calculateAddressValue(char* setting,int value1,int value2,int value3){
+    
+      modValue=sumTotal/strlen(setting);
+    
+      modProduct=(value1*modValue);
+    
+    
+      sum=(modProduct+(value1+1)+(value2+1)+value3) % (modValue*(value1+1)+1);
+    
+      return sum;
+    
 }
 
 void setup() {
@@ -285,6 +430,8 @@ void setup() {
     Serial.println(house[i]);
   }
   #endif
+
+  sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
   
 }
 
@@ -293,15 +440,9 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-
+  
     
-  static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum;
-
-  //address will be a unique value that is generated as a memory address for each setting chosen
-
-  static state_t state=floors;
-  static state_t backToFloor,backToType,backToName,backToAction;
-  static char actionChoice;
+  
 
 
   switch (state){
@@ -336,6 +477,9 @@ void loop() {
             state= outside;
         
             break;
+
+          case 3:
+            state=data;
   
         }
         break;
@@ -348,6 +492,7 @@ void loop() {
         choice=chooseSettings(firstFlrRoom,first);
 
         address+=choice*50;
+        
 
         
         if (choice==50){
@@ -367,6 +512,7 @@ void loop() {
 
         address+=choice*50;
         
+        
         if (choice==50){
           state=floors;// goes back to thee previous state
         }else{
@@ -382,6 +528,7 @@ void loop() {
         address=startingAddress;
         choice=chooseSettings(outsideRoom,outside);
         address+=choice*50;
+        
         
         if (choice==50){
           state=floors;// goes back to thee previous state
@@ -409,7 +556,8 @@ void loop() {
 
         choice=chooseSettings(typeSetting,type);
         typeChoice=choice;//saves the choice which will be used in the address generation using mod
-        sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
+        setting=typeSetting;//saves the setting
+        
 
         if (choice==50){
           state=backToFloor;
@@ -425,6 +573,7 @@ void loop() {
 
         choice=chooseSettings(gardenSetting,gardenType);
         typeChoice=choice;//saves choice for mod
+        setting=gardenSetting;//saves the setting
         sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
         
         if (choice==50){
@@ -438,10 +587,6 @@ void loop() {
 
 
       case names:
-
-        
-        
-
         choice = chooseSettings(deviceName,names);
         nameChoice=choice;
 
@@ -452,12 +597,7 @@ void loop() {
 
           state = actions;
           backToName=names;
-
-        
-
-
-          
-          
+  
         }
 
         
@@ -472,19 +612,19 @@ void loop() {
         choice=chooseSettings(actionSetting,actions);
 
 
-
         if (choice==50){
           state=backToName;
         }else{
 
           /*unique address generation*/
-          modValue=sumTotal/strlen(typeSetting);
 
-          modProduct=(typeChoice*modValue);
 
-          sum=(modProduct+(typeChoice+1)+(nameChoice+1)+choice) % (modValue*(typeChoice+1)+1);
-
+          sum=calculateAddressValue(setting,typeChoice,nameChoice,choice);
+ 
           address+=sum;//final unique address
+          
+          
+          
 
           actionChoice=actionSetting[choice];
           state=values;
@@ -494,6 +634,7 @@ void loop() {
 
           #ifdef DEBUG
           Serial.println(address);
+          Serial.println(setting);
           #endif
           delay(10);
           
@@ -505,12 +646,12 @@ void loop() {
 
     case values:
        
-        int value =(int) EEPROM.read(address);
+        value =(int) EEPROM.read(address);
 
         
         if (actionChoice=='L'){
 
-          if(value>100){
+          if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
             EEPROM.update(address,0);
             value=0;
           }
@@ -529,21 +670,18 @@ void loop() {
 
           if (value<10){
 
-            lcd.print("0");
+            lcd.print(F("0"));
           }
           
           lcd.print(value);
-          lcd.print(":00");
+          lcd.print(F(":00"));
           
         }
 
 
-
         
 
-
-
-        bool chosen =false;
+        chosen =false;
 
     
         while(!chosen){
@@ -553,10 +691,10 @@ void loop() {
           
           int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
 
-          
+          //if the action selected is level then values are incremented in 10s between 100 and 0
           if (actionChoice=='L'){
               if (changes){
-                  if(old_buttons&BUTTON_RIGHT&&value<100){//once select is greater than the length the index will not be in range
+                  if(old_buttons&BUTTON_RIGHT&&value<100){
                     value+=10;
                     lcd.clear();
                     
@@ -591,17 +729,17 @@ void loop() {
           }else{
 
               if (changes){
-                  if(old_buttons&BUTTON_RIGHT&&value<23){//once select is greater than the length the index will not be in range
+                  if(old_buttons&BUTTON_RIGHT&&value<23){
                     value+=1;
                     lcd.clear();
 
                     if (value<10){
 
-                      lcd.print("0");
+                      lcd.print(F("0"));
                     }
                     
                     lcd.print(value);
-                    lcd.print(":00");
+                    lcd.print(F(":00"));
                     
                     
                     
@@ -611,11 +749,11 @@ void loop() {
                     
                     if (value<10){
 
-                      lcd.print("0");
+                      lcd.print(F("0"));
                     }
                     
                     lcd.print(value);
-                    lcd.print(":00");
+                    lcd.print(F(":00"));
                     
                     
                     
@@ -636,25 +774,117 @@ void loop() {
                   }
                   
               }
-
-
-
-            
+          
           }
   
-          old_buttons=buttons;
-
-
-
-
-        
+          old_buttons=buttons;   
       }
 
-     
+      break; 
 
-  
-      break;
+    case data:
+
       
+     
+      for(int a=0;a<(strlen(floorRoom)-1);a++){
+        
+        
+        if (floorRoom[a]=='F'){
+            room=firstFlrRoom;
+            opt=1;
+        }else if(floorRoom[a]=='G'){
+
+          room=groundRoom;
+          opt=2;
+          
+          
+        }else if(floorRoom[a]=='O'){
+            room=outsideRoom;
+            opt=3;
+        }
+
+        address=200*opt;
+             
+            
+        for (int b=0;b<strlen(room);b++){
+
+          address+=b*50;
+
+          if(room[b]=='R'){
+            setting=gardenSetting;
+            setNum=5;
+          }else{
+            setting = typeSetting;
+            setNum=4;
+          }
+          
+
+            for (int c=0; c<strlen(setting);c++){
+
+                for (int d=0;d<strlen(deviceName);d++){
+
+                    for(int e=0;e<strlen(actionSetting);e++){
+
+                        sum=calculateAddressValue(setting,c,d,e);
+                        
+
+                        
+                        
+                        getMenuItemString(floorRoom,a,0);
+                        Serial.print("/");
+                        getMenuItemString(room,b,opt);
+                        Serial.print("/");
+                        getMenuItemString(setting,c,setNum);
+                        Serial.print("/");
+                        getMenuItemString(deviceName,d,6);
+                        Serial.print("/");
+                        getMenuItemString(actionSetting,e,7); 
+                        Serial.print(": ");
+
+                        value = (int) EEPROM.read(address+sum);
+                        if (actionSetting[e]=='L'){
+                
+                          if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
+                            value=0;
+                          }
+
+                          Serial.println(value);
+                          
+                        }else{
+                
+                          if(value>23){
+                            
+                            value=0;
+                          }
+                          
+                          
+                
+                          if (value<10){
+                
+                            Serial.print(F("0"));
+                          }
+                          
+                          Serial.print(value);
+                          Serial.println(F(":00"));
+                          
+                        }
+                        
+                      
+                    }              
+                }
+              
+            }
+          
+        }
+    
+      
+    }
+
+    state=floors;
+    break;
+
+      
+
       
    
   }
