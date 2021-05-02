@@ -8,7 +8,7 @@
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=9;
-char floorRoom[5]="";
+char floorRoom[5]="";//empty char arrays are declared
 char firstFlrRoom[4]="";
 char groundRoom[4]="";
 char outsideRoom[3]="";
@@ -77,7 +77,7 @@ void readEE(char** house){//reads the house desc from the eeprom
 }
 
 
-String getMenuItemString(char* setting,int option,int num_setting){
+void printSettings(char* setting,int option,int num_setting){
 
       switch (num_setting){
 
@@ -195,7 +195,7 @@ String getMenuItemString(char* setting,int option,int num_setting){
   
   }
   
-void navSettings(char* setting,int option,int num_setting){
+void printLcdSettings(char* setting,int option,int num_setting){
 
 
       lcd.clear();
@@ -323,10 +323,10 @@ void navSettings(char* setting,int option,int num_setting){
   }
 
 
-int chooseSettings(char* setting,int num_setting){//num setting is the number based on the enum which is used to specify what case will be called
+int navSettings(char* setting,int num_setting){//num setting is the number based on the enum which is used to specify what case will be called
     int select=0;//select is actionSetting number that is used to call the index of actionSetting house descriptor in order to print out its value and return actionSetting number that can be used for cases
    
-    navSettings(setting,select,num_setting);
+    printLcdSettings(setting,select,num_setting);
     bool chosen =false;
 
     while(!chosen){
@@ -342,12 +342,12 @@ int chooseSettings(char* setting,int num_setting){//num setting is the number ba
         if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){//once select is greater than the length the index will not be in range
           lcd.clear();
           select+=1;
-          navSettings(setting,select,num_setting);
+          printLcdSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_LEFT&&select>0){
           lcd.clear();
           select-=1;
-          navSettings(setting,select,num_setting);
+          printLcdSettings(setting,select,num_setting);
           
         }else if(old_buttons&BUTTON_SELECT){
 
@@ -390,14 +390,14 @@ int sumIterations(char* firstIter,char* nestedIter,char* secondNestedIter){//fun
 
 
 
-int calculateAddressValue(char* setting,int value1,int value2,int value3){
+int calculateAddressValue(char* setting,int sumTotal,int typeChoice,int nameChoice,int actionChoice){
     
       modValue=sumTotal/strlen(setting);
     
-      modProduct=(value1*modValue);
+      modProduct=(typeChoice*modValue);
     
     
-      sum=(modProduct+(value1+1)+(value2+1)+value3) % (modValue*(value1+1)+1);
+      sum=(modProduct+(typeChoice+1)+(nameChoice+1)+actionChoice) % (modValue*(typeChoice+1)+1);
     
       return sum;
     
@@ -407,7 +407,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   lcd.begin(16,2);
- 
+  Serial.println("BASIC");
 
 
   if (written ==0){
@@ -419,7 +419,7 @@ void setup() {
     
   }else{
     
-    Serial.println("VALID");
+    
   }
   
   readEE(house);
@@ -431,7 +431,7 @@ void setup() {
   }
   #endif
 
-  sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
+  
   
 }
 
@@ -451,7 +451,7 @@ void loop() {
         address=0;
           
   
-        choice=chooseSettings(floorRoom,floors); //could have used house[floors] instead of floorRoom
+        choice=navSettings(floorRoom,floors); //could have used house[floors] instead of floorRoom
 
         address=(choice+1)*200;
         startingAddress=address;//stores the address so that when going back in the menu it will remember the adress before the value was changed
@@ -489,7 +489,7 @@ void loop() {
       case first:
         address=startingAddress;
   
-        choice=chooseSettings(firstFlrRoom,first);
+        choice=navSettings(firstFlrRoom,first);
 
         address+=choice*50;
         
@@ -508,7 +508,7 @@ void loop() {
       case ground:
         address=startingAddress;
         
-        choice=chooseSettings(groundRoom,ground);
+        choice=navSettings(groundRoom,ground);
 
         address+=choice*50;
         
@@ -526,7 +526,7 @@ void loop() {
       case outside:
 
         address=startingAddress;
-        choice=chooseSettings(outsideRoom,outside);
+        choice=navSettings(outsideRoom,outside);
         address+=choice*50;
         
         
@@ -554,9 +554,10 @@ void loop() {
 
         addressAtType=address;
 
-        choice=chooseSettings(typeSetting,type);
+        choice=navSettings(typeSetting,type);
         typeChoice=choice;//saves the choice which will be used in the address generation using mod
         setting=typeSetting;//saves the setting
+        sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
         
 
         if (choice==50){
@@ -571,7 +572,7 @@ void loop() {
 
         addressAtType=address;
 
-        choice=chooseSettings(gardenSetting,gardenType);
+        choice=navSettings(gardenSetting,gardenType);
         typeChoice=choice;//saves choice for mod
         setting=gardenSetting;//saves the setting
         sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
@@ -587,7 +588,7 @@ void loop() {
 
 
       case names:
-        choice = chooseSettings(deviceName,names);
+        choice = navSettings(deviceName,names);
         nameChoice=choice;
 
         if (choice==50){
@@ -609,7 +610,7 @@ void loop() {
       
          sum=0;
       
-        choice=chooseSettings(actionSetting,actions);
+        choice=navSettings(actionSetting,actions);
 
 
         if (choice==50){
@@ -619,7 +620,7 @@ void loop() {
           /*unique address generation*/
 
 
-          sum=calculateAddressValue(setting,typeChoice,nameChoice,choice);
+          sum=calculateAddressValue(setting,sumTotal,typeChoice,nameChoice,choice);
  
           address+=sum;//final unique address
           
@@ -813,9 +814,11 @@ void loop() {
           if(room[b]=='R'){
             setting=gardenSetting;
             setNum=5;
+            sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
           }else{
             setting = typeSetting;
             setNum=4;
+            sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
           }
           
 
@@ -825,20 +828,20 @@ void loop() {
 
                     for(int e=0;e<strlen(actionSetting);e++){
 
-                        sum=calculateAddressValue(setting,c,d,e);
+                        sum=calculateAddressValue(setting,sumTotal,c,d,e);
                         
 
                         
-                        
-                        getMenuItemString(floorRoom,a,0);
+                        //Serial.println(address+sum);
+                        printSettings(floorRoom,a,0);
                         Serial.print("/");
-                        getMenuItemString(room,b,opt);
+                        printSettings(room,b,opt);
                         Serial.print("/");
-                        getMenuItemString(setting,c,setNum);
+                        printSettings(setting,c,setNum);
                         Serial.print("/");
-                        getMenuItemString(deviceName,d,6);
+                        printSettings(deviceName,d,6);
                         Serial.print("/");
-                        getMenuItemString(actionSetting,e,7); 
+                        printSettings(actionSetting,e,7); 
                         Serial.print(": ");
 
                         value = (int) EEPROM.read(address+sum);
@@ -888,6 +891,7 @@ void loop() {
       
    
   }
+
 
   
 
