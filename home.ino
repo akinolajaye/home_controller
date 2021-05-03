@@ -26,7 +26,7 @@ static bool chosen;
  
 
   static state_t state=floors;
-  static state_t backToFloor,backToType,backToName,backToAction;
+  static state_t backToFloor,backToType,backToName,backToAction,lastMenuSelected;
   static char actionChoice;
 
 void writeEE(){//function to write house description into eeprom
@@ -336,7 +336,12 @@ int navSettings(char* setting,int num_setting){//num setting is the number based
       
       int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
       
-  
+      if(Serial.available()){
+
+          select= 20;
+          chosen=true;
+          
+        }
     
       if (changes){
         if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){//once select is greater than the length the index will not be in range
@@ -441,53 +446,58 @@ void loop() {
   // put your main code here, to run repeatedly:
 
   
-    
-  
+  char command=' ';
+  command=Serial.read();
 
+  if (choice==20){
+    if (command=='q' or command=='Q'){
+      state=data;
+      choice=0;
+    }
+  }
 
   switch (state){
 
       case floors:
         address=0;
+        lastMenuSelected=floors;
           
   
         choice=navSettings(floorRoom,floors); //could have used house[floors] instead of floorRoom
+
 
         address=(choice+1)*200;
         startingAddress=address;//stores the address so that when going back in the menu it will remember the adress before the value was changed
         
         
-  
-        switch (choice){
-  
-          case 0:
-  
-            state= first;
-            
-            break;
-  
-          case 1:
-  
-            state= ground;
-            
-            break;
-  
-          case 2:
-  
-            state= outside;
-        
-            break;
+      
+        if (choice==0){
+          
+          state= first;
+          
+        }else if(choice==1){
 
-          case 3:
-            state=data;
-  
+          state=ground;
+
+          
+        }else if(choice==2){
+
+          state=outside;
+          
+          
+        }else if(choice==3){
+
+          state=data;
+          
         }
+        
         break;
 
         
   
       case first:
         address=startingAddress;
+        lastMenuSelected=first;
   
         choice=navSettings(firstFlrRoom,first);
 
@@ -507,7 +517,7 @@ void loop() {
   
       case ground:
         address=startingAddress;
-        
+        lastMenuSelected=ground;
         choice=navSettings(groundRoom,ground);
 
         address+=choice*50;
@@ -524,7 +534,7 @@ void loop() {
         
   
       case outside:
-
+        lastMenuSelected=outside;
         address=startingAddress;
         choice=navSettings(outsideRoom,outside);
         address+=choice*50;
@@ -550,7 +560,7 @@ void loop() {
 
       case type:
 
-        
+        lastMenuSelected=type;
 
         addressAtType=address;
 
@@ -569,7 +579,7 @@ void loop() {
         break;
 
       case gardenType:
-
+        lastMenuSelected=gardenType;
         addressAtType=address;
 
         choice=navSettings(gardenSetting,gardenType);
@@ -588,6 +598,7 @@ void loop() {
 
 
       case names:
+        lastMenuSelected=names;
         choice = navSettings(deviceName,names);
         nameChoice=choice;
 
@@ -605,6 +616,7 @@ void loop() {
         break;
 
       case actions:
+        lastMenuSelected=actions;
 
         address=addressAtType;
       
@@ -646,7 +658,7 @@ void loop() {
 
 
     case values:
-       
+       lastMenuSelected=values;
         value =(int) EEPROM.read(address);
 
         
@@ -785,7 +797,7 @@ void loop() {
 
     case data:
 
-      
+      bool printData;
      
       for(int a=0;a<(strlen(floorRoom)-1);a++){
         
@@ -833,42 +845,74 @@ void loop() {
 
                         
                         //Serial.println(address+sum);
-                        printSettings(floorRoom,a,0);
-                        Serial.print("/");
-                        printSettings(room,b,opt);
-                        Serial.print("/");
-                        printSettings(setting,c,setNum);
-                        Serial.print("/");
-                        printSettings(deviceName,d,6);
-                        Serial.print("/");
-                        printSettings(actionSetting,e,7); 
-                        Serial.print(": ");
 
                         value = (int) EEPROM.read(address+sum);
                         if (actionSetting[e]=='L'){
                 
                           if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
-                            value=0;
+                            printData=false;
+                          }else{
+                            printData=true;
                           }
 
-                          Serial.println(value);
+                          if(printData){
+                            
+                              printSettings(floorRoom,a,0);
+                              Serial.print("/");
+                              printSettings(room,b,opt);
+                              Serial.print("/");
+                              printSettings(setting,c,setNum);
+                              Serial.print("/");
+                              printSettings(deviceName,d,6);
+                              Serial.print("/");
+                              printSettings(actionSetting,e,7); 
+                              Serial.print(": ");
+                              Serial.println(value);
+                            
+                          }
+
+
+
                           
+
                         }else{
                 
                           if(value>23){
                             
-                            value=0;
+                            printData=false;
+                            
+                          }else{
+
+                            printData=true;
                           }
+
+
+                          if(printData){
+                            
+                              printSettings(floorRoom,a,0);
+                              Serial.print("/");
+                              printSettings(room,b,opt);
+                              Serial.print("/");
+                              printSettings(setting,c,setNum);
+                              Serial.print("/");
+                              printSettings(deviceName,d,6);
+                              Serial.print("/");
+                              printSettings(actionSetting,e,7); 
+                              Serial.print(": ");
+                            
                           
                           
                 
-                          if (value<10){
-                
-                            Serial.print(F("0"));
+                              if (value<10){
+                    
+                                Serial.print(F("0"));
+                              }
+                              
+                              Serial.print(value);
+                              Serial.println(F(":00"));
+
+
                           }
-                          
-                          Serial.print(value);
-                          Serial.println(F(":00"));
                           
                         }
                         
@@ -883,7 +927,7 @@ void loop() {
       
     }
 
-    state=floors;
+    state=lastMenuSelected;
     break;
 
       
