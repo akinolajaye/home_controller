@@ -4,7 +4,7 @@
 #include <utility/Adafruit_MCP23017.h>
 #include <EEPROM.h>
 #include <avr/eeprom.h>
-#define DEBUG
+#define DEBU
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=9;
@@ -20,14 +20,34 @@ char* setting = (char*) malloc(sizeof(char)*5);
 char* room = (char*) malloc(sizeof(char)*5);
 int written=EEPROM.read(0);// reads the first value in the eeprom 
 char* house[9]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};
-typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values,data} state_t;
-static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum,value,opt,setNum ;
+typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values,data,memory} state_t;
+static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum,value,opt,setNum,addressLoop ;
 static bool chosen;
  
 
   static state_t state=floors;
   static state_t backToFloor,backToType,backToName,backToAction,lastMenuSelected;
   static char actionChoice;
+
+
+
+//
+// Used in calculating free memory.
+//
+
+//
+// Returns the current amount of free memory in bytes.
+//
+int freeMemory() {
+    extern unsigned int __bss_end;
+    extern void *__brkval;
+
+  
+    int free_memory;
+    if ((int) __brkval)
+        return ((int) &free_memory) - ((int) __brkval);
+    return ((int) &free_memory) - ((int) &__bss_end);
+}
 
 void writeEE(){//function to write house description into eeprom
   char floorRoom[6]={'F','G','O','S','-'}; 
@@ -330,7 +350,7 @@ int navSettings(char* setting,int num_setting){//num setting is the number based
     bool chosen =false;
 
     while(!chosen){
-  
+
       static int old_buttons=lcd.readButtons(); //reads number pressed only runs this code once because it is static and so will remember its value
       int buttons =lcd.readButtons();//reads buttons currently pressed
       
@@ -344,6 +364,7 @@ int navSettings(char* setting,int num_setting){//num setting is the number based
         }
     
       if (changes){
+        
         if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){//once select is greater than the length the index will not be in range
           lcd.clear();
           select+=1;
@@ -447,18 +468,25 @@ void loop() {
 
   
   char command=' ';
+
+        
   command=Serial.read();
 
   if (choice==20){
     if (command=='q' or command=='Q'){
       state=data;
       choice=0;
+    }else if(command=='m' or command=='M'){
+      state=memory;
+      choice=0;
+      
     }
   }
 
   switch (state){
 
       case floors:
+        
         address=0;
         lastMenuSelected=floors;
           
@@ -661,6 +689,8 @@ void loop() {
        lastMenuSelected=values;
         value =(int) EEPROM.read(address);
 
+       
+
         
         if (actionChoice=='L'){
 
@@ -703,6 +733,13 @@ void loop() {
           int buttons =lcd.readButtons();//reads buttons currently pressed
           
           int changes = old_buttons & ~buttons; // uses ~ which means complement and is basicall not but for ints, check if the button pressed has changed from previous
+            
+          if(Serial.available()){
+        
+              choice= 20;
+              chosen=true;
+              
+            }
 
           //if the action selected is level then values are incremented in 10s between 100 and 0
           if (actionChoice=='L'){
@@ -798,7 +835,8 @@ void loop() {
     case data:
 
       bool printData;
-     
+
+      
       for(int a=0;a<(strlen(floorRoom)-1);a++){
         
         
@@ -816,12 +854,12 @@ void loop() {
             opt=3;
         }
 
-        address=200*opt;
+        addressLoop=200*opt;
              
             
         for (int b=0;b<strlen(room);b++){
 
-          address+=b*50;
+          addressLoop+=b*50;
 
           if(room[b]=='R'){
             setting=gardenSetting;
@@ -846,7 +884,7 @@ void loop() {
                         
                         //Serial.println(address+sum);
 
-                        value = (int) EEPROM.read(address+sum);
+                        value = (int) EEPROM.read(addressLoop+sum);
                         if (actionSetting[e]=='L'){
                 
                           if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
@@ -932,9 +970,21 @@ void loop() {
 
       
 
-      
+   case memory:
+
+    Serial.print(F("SRAM data currently in use: "));
+    Serial.println(2048-100-freeMemory());
+
+    Serial.print(F("SRAM data available to use: "));
+    Serial.println(freeMemory());
+    state=lastMenuSelected;
+
+
+    break;
    
   }
+
+  
 
 
   
