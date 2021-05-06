@@ -4,7 +4,7 @@
 #include <utility/Adafruit_MCP23017.h>
 #include <EEPROM.h>
 #include <avr/eeprom.h>
-#define DEBU
+#define D
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 int HOUSE_LEN=9;
@@ -20,14 +20,13 @@ char* setting = (char*) malloc(sizeof(char)*5);
 char* room = (char*) malloc(sizeof(char)*5);
 int written=EEPROM.read(0);// reads the first value in the eeprom 
 char* house[9]={floorRoom,firstFlrRoom,groundRoom,outsideRoom,typeSetting,gardenSetting,deviceName,actionSetting};
-typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values,data,memory} state_t;
-static int address,sumTotal,choice,typeChoice,modValue,modProduct,startingAddress,addressAtType,nameChoice,sum,value,opt,setNum,addressLoop ;
+typedef enum state_e {floors=0,first,ground,outside,type,gardenType,names,actions,values} state_t;
+static int address,sumTotal,choice,typeChoice,startingAddress,addressAtType,nameChoice,uniqueAddressValue,value,opt,setNum,addressLoop ;
 static bool chosen;
  
-
-  static state_t state=floors;
-  static state_t backToFloor,backToType,backToName,backToAction,lastMenuSelected;
-  static char actionChoice;
+static state_t state=floors;
+static state_t backToRoom,backToType,backToName,backToAction;
+static char actionChar;
 
 
 
@@ -38,15 +37,14 @@ static bool chosen;
 //
 // Returns the current amount of free memory in bytes.
 //
-int freeMemory() {
-    extern unsigned int __bss_end;
-    extern void *__brkval;
+#
+extern char *__brkval;
 
+int freeMemory() {
+  char top;
   
-    int free_memory;
-    if ((int) __brkval)
-        return ((int) &free_memory) - ((int) __brkval);
-    return ((int) &free_memory) - ((int) &__bss_end);
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+ // #endif
 }
 
 void writeEE(){//function to write house description into eeprom
@@ -364,7 +362,7 @@ int navSettings(char* setting,int num_setting){//num setting is the number based
         }
     
       if (changes){
-        
+         delay(10);
         if(old_buttons&BUTTON_RIGHT&&select<strlen(setting)-1){//once select is greater than the length the index will not be in range
           lcd.clear();
           select+=1;
@@ -417,23 +415,177 @@ int sumIterations(char* firstIter,char* nestedIter,char* secondNestedIter){//fun
 
 
 int calculateAddressValue(char* setting,int sumTotal,int typeChoice,int nameChoice,int actionChoice){
+
+      int modValue;
+      int modProduct;
     
       modValue=sumTotal/strlen(setting);
     
       modProduct=(typeChoice*modValue);
     
     
-      sum=(modProduct+(typeChoice+1)+(nameChoice+1)+actionChoice) % (modValue*(typeChoice+1)+1);
+      uniqueAddressValue=(modProduct+(typeChoice+1)+(nameChoice+1)+actionChoice) % (modValue*(typeChoice+1)+1);
     
-      return sum;
+      return uniqueAddressValue;
     
 }
+
+void showData(){
+  
+
+      bool printData;
+
+      
+      for(int a=0;a<(strlen(floorRoom)-1);a++){
+        
+        
+        if (floorRoom[a]=='F'){
+            room=firstFlrRoom;
+            opt=1;
+        }else if(floorRoom[a]=='G'){
+
+          room=groundRoom;
+          opt=2;
+          
+          
+        }else if(floorRoom[a]=='O'){
+            room=outsideRoom;
+            opt=3;
+        }
+
+        addressLoop=200*opt;
+             
+            
+        for (int b=0;b<strlen(room);b++){
+
+          addressLoop+=b*50;
+
+          if(room[b]=='R'){
+            setting=gardenSetting;
+            setNum=5;
+            
+          }else{
+            setting = typeSetting;
+            setNum=4;
+            
+          }
+          sumTotal=sumIterations(setting,deviceName,actionSetting);
+
+            for (int c=0; c<strlen(setting);c++){
+
+                for (int d=0;d<strlen(deviceName);d++){
+
+                    for(int e=0;e<strlen(actionSetting);e++){
+
+                        uniqueAddressValue=calculateAddressValue(setting,sumTotal,c,d,e);
+                        
+
+                        
+                        //Serial.println(address+uniqueAddressValue);
+
+                        value = (int) EEPROM.read(addressLoop+uniqueAddressValue);
+                        
+                        if (actionSetting[e]=='L'){
+                
+                          if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
+                            printData=false;
+                          }else{
+                            printData=true;
+                          }
+
+                          if(printData){
+                            
+                              printSettings(floorRoom,a,0);
+                              Serial.print("/");
+                              printSettings(room,b,opt);
+                              Serial.print("/");
+                              printSettings(setting,c,setNum);
+                              Serial.print("/");
+                              printSettings(deviceName,d,6);
+                              Serial.print("/");
+                              printSettings(actionSetting,e,7); 
+                              Serial.print(": ");
+                              Serial.println(value);
+                            
+                          }
+
+
+
+                          
+
+                        }else{
+                
+                          if(value>23){
+                            
+                            printData=false;
+                            
+                          }else{
+
+                            printData=true;
+                          }
+
+
+                          if(printData){
+                            
+                              printSettings(floorRoom,a,0);
+                              Serial.print("/");
+                              printSettings(room,b,opt);
+                              Serial.print("/");
+                              printSettings(setting,c,setNum);
+                              Serial.print("/");
+                              printSettings(deviceName,d,6);
+                              Serial.print("/");
+                              printSettings(actionSetting,e,7); 
+                              Serial.print(": ");
+                            
+                          
+                          
+                
+                              if (value<10){
+                    
+                                Serial.print(F("0"));
+                              }
+                              
+                              Serial.print(value);
+                              Serial.println(F(":00"));
+
+
+                          }
+                          
+                        }
+                        
+                      
+                    }              
+                }
+              
+            }
+          
+        }
+    
+      
+    }
+
+   
+
+}
+
+void showMemory(){
+  
+    Serial.print(F("SRAM data currently in use: "));
+    Serial.print(2048-freeMemory());
+    Serial.println(F(" bytes"));
+    
+    Serial.print(F("SRAM data available to use: "));
+    Serial.print(freeMemory());
+    Serial.println(F(" bytes"));
+  
+  }
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   lcd.begin(16,2);
-  Serial.println("BASIC");
+  Serial.println("ENHANCED");
 
 
   if (written ==0){
@@ -474,11 +626,11 @@ void loop() {
 
   if (choice==20){
     if (command=='q' or command=='Q'){
-      state=data;
-      choice=0;
+      showData();
+      //choice=0;
     }else if(command=='m' or command=='M'){
-      state=memory;
-      choice=0;
+      showMemory();
+      //choice=0;
       
     }
   }
@@ -488,7 +640,7 @@ void loop() {
       case floors:
         
         address=0;
-        lastMenuSelected=floors;
+        
           
   
         choice=navSettings(floorRoom,floors); //could have used house[floors] instead of floorRoom
@@ -501,7 +653,7 @@ void loop() {
       
         if (choice==0){
           
-          state= first;
+          state= first; 
           
         }else if(choice==1){
 
@@ -515,7 +667,7 @@ void loop() {
           
         }else if(choice==3){
 
-          state=data;
+          showData();
           
         }
         
@@ -525,7 +677,7 @@ void loop() {
   
       case first:
         address=startingAddress;
-        lastMenuSelected=first;
+        
   
         choice=navSettings(firstFlrRoom,first);
 
@@ -537,7 +689,7 @@ void loop() {
           state=floors;// goes back to thee previous state
         }else{
           state=type;
-          backToFloor=first;
+          backToRoom=first;
         }
         break;
 
@@ -545,7 +697,7 @@ void loop() {
   
       case ground:
         address=startingAddress;
-        lastMenuSelected=ground;
+        
         choice=navSettings(groundRoom,ground);
 
         address+=choice*50;
@@ -555,14 +707,14 @@ void loop() {
           state=floors;// goes back to thee previous state
         }else{
           state=type;
-          backToFloor=ground;//stores sthe previous state so that when using buttons to go back the system remembers the menu last selected
+          backToRoom=ground;//stores sthe previous state so that when using buttons to go back the system remembers the menu last selected
         }
         break;
 
         
   
       case outside:
-        lastMenuSelected=outside;
+        
         address=startingAddress;
         choice=navSettings(outsideRoom,outside);
         address+=choice*50;
@@ -579,7 +731,7 @@ void loop() {
             state=type;
           }
           
-          backToFloor=outside;
+          backToRoom=outside;
         }
         break;
 
@@ -588,7 +740,7 @@ void loop() {
 
       case type:
 
-        lastMenuSelected=type;
+        
 
         addressAtType=address;
 
@@ -599,7 +751,7 @@ void loop() {
         
 
         if (choice==50){
-          state=backToFloor;
+          state=backToRoom;
         }else{
           state=names;
           backToType=type;
@@ -607,7 +759,7 @@ void loop() {
         break;
 
       case gardenType:
-        lastMenuSelected=gardenType;
+        
         addressAtType=address;
 
         choice=navSettings(gardenSetting,gardenType);
@@ -616,7 +768,7 @@ void loop() {
         sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
         
         if (choice==50){
-          state=backToFloor;
+          state=backToRoom;
         }else{
           state=names;
           backToType=gardenType;
@@ -626,7 +778,7 @@ void loop() {
 
 
       case names:
-        lastMenuSelected=names;
+        
         choice = navSettings(deviceName,names);
         nameChoice=choice;
 
@@ -644,11 +796,11 @@ void loop() {
         break;
 
       case actions:
-        lastMenuSelected=actions;
+        
 
         address=addressAtType;
       
-         sum=0;
+         uniqueAddressValue=0;
       
         choice=navSettings(actionSetting,actions);
 
@@ -660,14 +812,14 @@ void loop() {
           /*unique address generation*/
 
 
-          sum=calculateAddressValue(setting,sumTotal,typeChoice,nameChoice,choice);
+          uniqueAddressValue=calculateAddressValue(setting,sumTotal,typeChoice,nameChoice,choice);
  
-          address+=sum;//final unique address
+          address+=uniqueAddressValue;//final unique address
           
           
           
 
-          actionChoice=actionSetting[choice];
+          actionChar=actionSetting[choice];
           state=values;
           backToAction=actions;
 
@@ -686,13 +838,13 @@ void loop() {
 
 
     case values:
-       lastMenuSelected=values;
+       
         value =(int) EEPROM.read(address);
 
        
 
         
-        if (actionChoice=='L'){
+        if (actionChar=='L'){
 
           if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
             EEPROM.update(address,0);
@@ -742,8 +894,9 @@ void loop() {
             }
 
           //if the action selected is level then values are incremented in 10s between 100 and 0
-          if (actionChoice=='L'){
+          if (actionChar=='L'){
               if (changes){
+                delay(10);
                   if(old_buttons&BUTTON_RIGHT&&value<100){
                     value+=10;
                     lcd.clear();
@@ -832,155 +985,6 @@ void loop() {
 
       break; 
 
-    case data:
-
-      bool printData;
-
-      
-      for(int a=0;a<(strlen(floorRoom)-1);a++){
-        
-        
-        if (floorRoom[a]=='F'){
-            room=firstFlrRoom;
-            opt=1;
-        }else if(floorRoom[a]=='G'){
-
-          room=groundRoom;
-          opt=2;
-          
-          
-        }else if(floorRoom[a]=='O'){
-            room=outsideRoom;
-            opt=3;
-        }
-
-        addressLoop=200*opt;
-             
-            
-        for (int b=0;b<strlen(room);b++){
-
-          addressLoop+=b*50;
-
-          if(room[b]=='R'){
-            setting=gardenSetting;
-            setNum=5;
-            sumTotal=sumIterations(gardenSetting,deviceName,actionSetting);
-          }else{
-            setting = typeSetting;
-            setNum=4;
-            sumTotal=sumIterations(typeSetting,deviceName,actionSetting);
-          }
-          
-
-            for (int c=0; c<strlen(setting);c++){
-
-                for (int d=0;d<strlen(deviceName);d++){
-
-                    for(int e=0;e<strlen(actionSetting);e++){
-
-                        sum=calculateAddressValue(setting,sumTotal,c,d,e);
-                        
-
-                        
-                        //Serial.println(address+sum);
-
-                        value = (int) EEPROM.read(addressLoop+sum);
-                        if (actionSetting[e]=='L'){
-                
-                          if(value>100){//the defaulty value of an eeprom is 255 which is outside the range for level (0 -100) thus gets changed to 0
-                            printData=false;
-                          }else{
-                            printData=true;
-                          }
-
-                          if(printData){
-                            
-                              printSettings(floorRoom,a,0);
-                              Serial.print("/");
-                              printSettings(room,b,opt);
-                              Serial.print("/");
-                              printSettings(setting,c,setNum);
-                              Serial.print("/");
-                              printSettings(deviceName,d,6);
-                              Serial.print("/");
-                              printSettings(actionSetting,e,7); 
-                              Serial.print(": ");
-                              Serial.println(value);
-                            
-                          }
-
-
-
-                          
-
-                        }else{
-                
-                          if(value>23){
-                            
-                            printData=false;
-                            
-                          }else{
-
-                            printData=true;
-                          }
-
-
-                          if(printData){
-                            
-                              printSettings(floorRoom,a,0);
-                              Serial.print("/");
-                              printSettings(room,b,opt);
-                              Serial.print("/");
-                              printSettings(setting,c,setNum);
-                              Serial.print("/");
-                              printSettings(deviceName,d,6);
-                              Serial.print("/");
-                              printSettings(actionSetting,e,7); 
-                              Serial.print(": ");
-                            
-                          
-                          
-                
-                              if (value<10){
-                    
-                                Serial.print(F("0"));
-                              }
-                              
-                              Serial.print(value);
-                              Serial.println(F(":00"));
-
-
-                          }
-                          
-                        }
-                        
-                      
-                    }              
-                }
-              
-            }
-          
-        }
-    
-      
-    }
-
-    state=lastMenuSelected;
-    break;
-
-      
-
-   case memory:
-
-    Serial.print(F("SRAM data currently in use: "));
-    Serial.println(2048-100-freeMemory());
-
-    Serial.print(F("SRAM data available to use: "));
-    Serial.println(freeMemory());
-    state=lastMenuSelected;
-
-
-    break;
    
   }
 
